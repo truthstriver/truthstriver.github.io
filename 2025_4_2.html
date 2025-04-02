@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video QA Analysis Dashboard</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        h1, h2 {
+            color: #2c3e50;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            flex: 1 1 45%;
+            min-width: 300px;
+            margin-bottom: 20px;
+        }
+        .card-header {
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .video-id {
+            background: #3498db;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        .question {
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .options {
+            margin: 15px 0;
+        }
+        .option {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 4px;
+        }
+        .correct {
+            background-color: #d4edda;
+            border-left: 4px solid #28a745;
+        }
+        .incorrect {
+            background-color: #f8d7da;
+            border-left: 4px solid #dc3545;
+        }
+        .response {
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .correct-response {
+            color: #28a745;
+        }
+        .incorrect-response {
+            color: #dc3545;
+        }
+        .agents {
+            margin-top: 15px;
+        }
+        .agent {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            padding: 5px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        .agent-name {
+            font-weight: bold;
+        }
+        .agent-answer {
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .agent-correct {
+            background-color: #d4edda;
+            color: #28a745;
+        }
+        .agent-incorrect {
+            background-color: #f8d7da;
+            color: #dc3545;
+        }
+        .reasoning {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #f0f8ff;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        .scores {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+        }
+        .score {
+            text-align: center;
+            padding: 5px;
+            border-radius: 4px;
+            background-color: #e9ecef;
+        }
+        .high-score {
+            background-color: #d4edda;
+            color: #28a745;
+        }
+        .medium-score {
+            background-color: #fff3cd;
+            color: #ffc107;
+        }
+        .low-score {
+            background-color: #f8d7da;
+            color: #dc3545;
+        }
+        .duration {
+            text-align: right;
+            font-style: italic;
+            color: #6c757d;
+        }
+        .section-title {
+            margin-top: 30px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+        }
+    </style>
+</head>
+<body>
+    <h1>Video QA Analysis Dashboard</h1>
+    
+    <h2 class="section-title">Correct Answers Marked Wrong</h2>
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <h3>Question 702-2</h3>
+                <span class="video-id">Video 702</span>
+            </div>
+            <div class="question">Why does the man in the suit and tie caution Wayne against following in his family's footsteps early in the video?</div>
+            <div class="options">
+                <div class="option">A. Because he dislikes kids who fight.</div>
+                <div class="option correct">B. Because he wants Wayne to learn to deal with conflicts in an appropriate manner.</div>
+                <div class="option">C. Because he doesn't want people who do wrong to escape punishment.</div>
+                <div class="option">D. Because Wayne's father was not a good man.</div>
+            </div>
+            <div class="response incorrect-response">System Response: D (Incorrect)</div>
+            <div class="agents">
+                <div class="agent">
+                    <span class="agent-name">visual_forensics:</span>
+                    <span class="agent-answer agent-incorrect">D</span>
+                </div>
+                <div class="agent">
+                    <span class="agent-name">contextual_semantics:</span>
+                    <span class="agent-answer agent-incorrect">D</span>
+                </div>
+                <div class="agent">
+                    <span class="agent-name">temporal_dynamics:</span>
+                    <span class="agent-answer agent-incorrect">D</span>
+                </div>
+                <div class="agent">
+                    <span class="agent-name">default:</span>
+                    <span class="agent-answer agent-correct">B</span>
+                </div>
+            </div>
+            <div class="reasoning">
+                <h4>Agent Reasoning:</h4>
+                <p><strong>visual_forensics:</strong> To determine why the man in the suit and tie cautions Wayne against following in his family's footsteps...</p>
+                <p><strong>contextual_semantics:</strong> The man in the suit and tie cautions Wayne against following in his family's footsteps because...</p>
+                <p><strong>temporal_dynamics:</strong> The man in the suit and tie cautions Wayne against following in his family's footsteps likely because...</p>
+                <p><strong>default:</strong> To determine why the man in the suit and tie cautions Wayne against following in his family's footsteps early in the video...</p>
+            </div>
+            <div class="scores">
+                <div class="score medium-score">visual_forensics: 7</div>
+                <div class="score high-score">contextual_semantics: 8</div>
+                <div class="score medium-score">temporal_dynamics: 6</div>
+                <div class="score low-score">default: 5</div>
+            </div>
+            <div class="duration">Analysis duration: long</div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>Question 703-2</h3>
+                <span class="video-id">Video 703</span>
+            </div>
+            <div class="question">Why does Kevin hug and apologize to the boy named Holden in the middle of the video?</div>
+            <div class="options">
+                <div class="option">A. Because Kevin did not greet the boy named Holden in the green hoodie.</div>
+                <div class="option correct">B. Because the boy named Holden in the green hoodie was once injured while saving Kevin.</div>
+                <div class="option">C. Because Kevin got married.</div>
+                <div class="option">D. Because Kevin once failed to save the boy named Holden in the green hoodie.</div>
+            </div>
+            <div class="response incorrect-response">System Response: D (Incorrect)</div>
+            <div class="agents">
+                <div class="agent">
+                    <span class="agent-name">visual_forensics:</span>
+                    <span class="agent-answer agent-incorrect">D</span>
+                </div>
+                <div class="agent">
+                    <span class="agent-name">contextual_semantics:</span>
+                    <span class="agent-answer agent-incorrect">D</span>
+                </div>
+                <div class="agent">
+                    <span class="agent-name">temporal_dynamics:</span>
+                    <span class="agent-answer agent-incorrect">D</span>
+                </div>
+                <div class="agent">
+                    <span class="agent-name">default:</span>
+                    <span class="agent-answer agent-correct">B</span>
+                </div>
+            </div>
+            <div class="reasoning">
+                <h4>Agent Reasoning:</h4>
+                <p><strong>visual_forensics:</strong> To determine why Kevin hugs and apologizes to the boy named Holden in the middle of the video...</p>
+                <p><strong>contextual_semantics:</strong> The video clip begins with a scene showing a water tower labeled "FORT REED" at night...</p>
+                <p><strong>temporal_dynamics:</strong> The image you provided does not contain any information about Kevin hugging and apologizing...</p>
+                <p><strong>default:</strong> To determine why Kevin hugs and apologizes to the boy named Holden in the middle of the video...</p>
+            </div>
+            <div class="scores">
+                <div class="score low-score">visual_forensics: 5</div>
+                <div class="score medium-score">contextual_semantics: 7</div>
+                <div class="score medium-score">temporal_dynamics: 6</div>
+                <div class="score low-score">default: 3</div>
+            </div>
+            <div class="duration">Analysis duration: long</div>
+        </div>
+    </div>
+
+    <h2 class="section-title">Wrong Answers Marked Correct</h2>
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <h3>Question 688-2</h3>
+                <span class="video-id">Video 688</span>
+            </div>
+            <div class="question">Which tech product in the video is not music-related?</div>
+            <div class="options">
+                <div class="option">A. Spotify.</div>
+                <div class="option">B. Shazam.</div>
+                <div class="option">C. Bose.</div>
+                <div class="option correct">D. MSG Shpere.</div>
+            </div>
+            <div class="response correct-response">System Response: D (Correct)</div>
+            <div class="agents">
+                <div class="agent">
+                    <span class="agent-name">visual_forensics:</span>
+                    <span class="agent-answer agent-correct">D</span>
+                </div>
+                <div class="agent">
+                    <span class="agent-name">contextual_semantics:</span>
+                    <span class="agent-answer agent-correct">D</span>
+                </div>
+                <div class="agent">
+                    <span class="agent-name">temporal_dynamics:</span>
+                    <span class="agent-answer agent-incorrect">C</span>
+                </div>
+                <div class="agent">
+                    <span class="agent-name">default:</span>
+                    <span class="agent-answer agent-incorrect">C</span>
+                </div>
+            </div>
+            <div class="reasoning">
+                <h4>Agent Reasoning:</h4>
+                <p><strong>visual_forensics:</strong> To determine which tech product in the video is not music-related, let's analyze each option...</p>
+                <p><strong>contextual_semantics:</strong> The tech product in the video that is not music-related is the laptop.</p>
+                <p><strong>temporal_dynamics:</strong> The video clip features several tech products and scenes...</p>
+                <p><strong>default:</strong> To determine which tech product in the video is not music-related, let's analyze each option...</p>
+            </div>
+            <div class="scores">
+                <div class="score high-score">visual_forensics: 8</div>
+                <div class="score medium-score">contextual_semantics: 7</div>
+                <div class="score medium-score">temporal_dynamics: 6</div>
+                <div class="score low-score">default: 5</div>
+            </div>
+            <div class="duration">Analysis duration: long</div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>Question 690-3</h3>
+                <span class="video-id">Video 690</span>
+            </div>
+            <div class="question">How many audio-like products are shown in the video?</div>
+            <div class="options">
+                <div class="option correct">A. 3.</div>
+                <div class="option">B. 4.</div>
+                <div class="option">C. 2.</div>
+                <div class="option">D. 5.</div>
+            </div>
+            <div class="response correct-response">System Response: A (Correct)</div>
+            <div class="agents">
+                <div class="agent">
+                    <span class="agent-name">visual_forensics:</span>
+                    <span class="agent-answer agent-correct">A</span>
+                </div>
+                <div class="agent">
+                    <span class="agent-name">contextual_semantics:</span>
+                    <span class="agent-answer agent-correct">A</span>
+                </div>
+                <div class="agent">
+                    <span class="agent-name">temporal_dynamics:</span>
+                    <span class="agent-answer agent-incorrect">C</span>
+                </div>
+                <div class="agent">
+                    <span class="agent-name">default:</span>
+                    <span class="agent-answer agent-incorrect">C</span>
+                </div>
+            </div>
+            <div class="reasoning">
+                <h4>Agent Reasoning:</h4>
+                <p><strong>visual_forensics:</strong> To determine how many audio-like products are shown in the video, let's analyze each segment...</p>
+                <p><strong>contextual_semantics:</strong> To answer the question, let's break down the information provided and analyze the video content step by step...</p>
+                <p><strong>temporal_dynamics:</strong> The video shows three audio-like products.</p>
+                <p><strong>default:</strong> To determine how many audio-like products are shown in the video, let's analyze the sequence of events...</p>
+            </div>
+            <div class="scores">
+                <div class="score medium-score">visual_forensics: 7</div>
+                <div class="score high-score">contextual_semantics: 8</div>
+                <div class="score medium-score">temporal_dynamics: 6</div>
+                <div class="score low-score">default: 5</div>
+            </div>
+            <div class="duration">Analysis duration: long</div>
+        </div>
+    </div>
+</body>
+</html>
