@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>油猴脚本开发笔记 - CNKI论文信息提取</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+            margin-top: 30px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .prompt-block {
+            background-color: #f5f5f5;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 5px 5px 0;
+            overflow-x: auto;
+        }
+        .version {
+            background-color: #e8f4fc;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 25px 0;
+            border: 1px solid #d1e3f5;
+        }
+        .version-title {
+            font-weight: bold;
+            color: #2980b9;
+            margin-bottom: 10px;
+        }
+        .thought {
+            font-style: italic;
+            color: #7f8c8d;
+            margin: 10px 0;
+            padding-left: 15px;
+            border-left: 2px solid #bdc3c7;
+        }
+        code {
+            background-color: #f0f0f0;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: Consolas, Monaco, 'Andale Mono', monospace;
+        }
+        pre {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .divider {
+            border-top: 1px dashed #ccc;
+            margin: 30px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>油猴脚本开发笔记 - CNKI论文信息提取</h1>
+    
+    <div class="version">
+        <div class="version-title">版本1.0 - 初始版本</div>
+        <div class="thought">
+            初始想法：创建一个油猴脚本，在CNKI网站上提取论文目录树并转换为思维导图格式。
+            主要关注点是从特定DOM元素中提取目录结构并调用API进行转换。
+        </div>
+        
+        <h2>1. 从v0.0版本</h2>
+        <div class="prompt-block">
+            <pre><code>帮我写一个油猴脚本，https://kns.cnki.net/当在这个域名下的时候，弹出一个按钮，如果按下按钮：
+
+1、提取&lt;ul id="js-catalog-tree" class="ztree ztree-fbg" style="top: 30px;"&gt;下的目录树，然后调用deepseek，令其将这个目录树转换成 xml格式的 .mm文件思维导图。然后生成一个{title}.mm文件保存下来。</code></pre>
+        </div>
+    </div>
+    
+    <div class="version">
+        <div class="version-title">版本2.0 - 元信息提取增强</div>
+        <div class="thought">
+            扩展思路：在提取目录的基础上，增加论文元信息的提取功能。
+            包括标题、作者、机构、摘要、关键词等信息的结构化提取和XML格式输出。
+        </div>
+        
+        <h2>2. 从v1.0版本</h2>
+        <div class="prompt-block">
+            <pre><code>添加逻辑：1、从class="ChapterWrap ChapterH1"中提取标题。并将标题信息连同目录一起交给deepseek进行转换。并且要注意把目录中的"基本信息"这个一级标题去掉（如果有的话）。
+
+2、
+（1）从第一个class="para Chapter-people"中提取作者，每个class="name-link" 都是一个作者。注意其中的&lt;sup&gt;2&lt;/sup&gt;要保留下来。这个用来指向机构序号。
+（2）然后在第二个class="para Chapter-people"中提取机构名。每个&lt;a&gt;都是一个机构。
+
+最后将作者信息保存为对应顺序的list数据结构。要用注意&lt;sup&gt;指向机构序号。如果没有序号则采用默认顺序，如果只有一个机构，则所有作者机构相同。
+[作者1 ,作者2 ,作者3 ]
+[机构1 ,机构2 ,机构3 ]
+的list数据结构。
+（3）从第一个&lt;abstract&gt;中提取摘要（内容提要）
+（4）从id="1000007"中提取关键词。并将关键词保存为list数据结构，去掉其中"关键词:"字样，然后每个&lt;span&gt;一个关键词。每个&lt;a&gt;中的纯文本都是一个关键词。
+（5）从第二个 class="ChapterWrap Content"下的所有文本中提取引言。这个下面所有文字都是引言。
+
+
+并在日志中打印出来。
+然后定义一个字符串：
+"&lt;paper&gt;
+    &lt;title&gt;TITLE_TMP&lt;/title&gt;
+    &lt;authors&gt;AUTHOR_LIST_TMP&lt;/authors&gt;
+    &lt;orgs&gt;ORG_LIST_TMP&lt;/orgs&gt;
+    &lt;abstract&gt;CONTENT_ABSTRACT_TMP&lt;/abstract&gt;
+    &lt;introductions&gt;
+        INTRODUCTION_TMP
+    &lt;/introductions&gt;
+    &lt;keywords&gt;
+        KEY_WORDS_TMP
+    &lt;/keywords&gt;
+    &lt;author_orgs&gt;
+        AUTHOR_ORGS
+    &lt;/author_orgs&gt;
+&lt;/paper&gt;"
+将摘要替换到 CONTENT_ABSTRACT_TMP 
+将作者LIST用空格分隔替换到 AUTHOR_LIST_TMP
+将机构LIST用空格分隔替换到 ORG_LIST_TMP中
+将标题替换到TITLE_TMP
+将关键词LIST的每个关键词KEY_WORD要包围在一个字符串中：&lt;key_word&gt;KEY_WORD&lt;/key_word&gt;
+拼接起来替换到KEY_WORDS_TMP中
+将引言替换到INTRODUCTION_TMP中。注意如果引言有多段，则将其每段包括起来拼接&lt;introductin&gt;INTRODUCTION_PARA&lt;/introduction&gt;
+将之前建立好的Author-org列表填入到AUTHOR_ORGS 中，每段包括起来拼接&lt;AAA&gt;Author&lt;BBB&gt;Org&lt;CCC&gt;
+最后将这个替换后的字符串保存为{TITLE}.html</code></pre>
+        </div>
+    </div>
+    
+    <div class="divider"></div>
+    
+    <div class="version">
+        <div class="version-title">版本3.0 - 元信息提取优化 (2025-4-3 13:00)</div>
+        <div class="thought">
+            优化思路：重构元信息提取逻辑，使用更结构化的paperMeta对象存储数据。
+            改进作者与机构的关联方式，增加期数提取功能，并完善日志系统。
+        </div>
+        
+        <h2>3. 第一轮改进</h2>
+        <p>2、提取论文元信息，并保存到paperMeta的对象中</p>
+        
+        <ul>
+            <li><strong>标题</strong>：&lt;div class="wx-tit"&gt; 的第一个&lt;h1&gt;，忽略掉&lt;span&gt;，&lt;a&gt;中的所有附加信息。
+            <br><code>paperMeta.title-&gt;str</code></li>
+            
+            <li><strong>作者</strong>：第一个&lt;h3 class="author"&gt;&lt;/h3&gt; 中，每一个&lt;a&gt;&lt;/a&gt;都是一个作者。假如&lt;a&gt;里面有&lt;sup&gt;将里面的数字记录为作者的机构ID。保存为LIST[(作者，机构ID),...] 如果没有ID则按作者顺序设置为1，2，3... 
+            <br><code>paperMeta.authors-&gt;LIST(str,int)</code></li>
+            
+            <li><strong>机构</strong>：第二个&lt;h3 class="author"&gt;&lt;/h3&gt; 中，每一个&lt;a&gt;&lt;/a&gt;都是一个机构。假如&lt;a&gt;里面的文字以数字开头1. 2.则将里面的数字记录为机构ID。存为LIST[(机构，机构ID),...]如果没有数字则按照机构顺序设置为1,2,3...
+            <br><code>paperMeta.orgs-&gt;LIST(str,int)</code></li>
+            
+            <li><strong>内容提要（摘要）</strong>：&lt;span class="abstract-text"&gt;的文本。
+            <br><code>paperMeta.abstract-&gt;str</code></li>
+            
+            <li><strong>关键词</strong>：&lt;p class="keywords"&gt; 每个&lt;a&gt;&lt;/a&gt;都是一个关键词。去除";","；"
+            <br><code>paperMeta.keywords-&gt;LIST</code></li>
+            
+            <li><strong>引用</strong>：调用当前页面的getQuotes()函数，并从第一个&lt;td class="quote-r"&gt;&lt;/td&gt;中获取纯文本。split("DOI")获取前半部分。
+            <br><code>paperMeta.ref-&gt;str</code>
+            <br><em>注意调用getQuotes不会返回任何内容，而是会在页面上生成一个新的元素。</em></li>
+            
+            <li><strong>期数</strong>：paperMeta.ref通过正则匹配前两个整数。分别为年 和 期数填充为 str如：2024年第12期。
+            <br><code>paperMeta.year_col</code></li>
+            
+            <li><strong>作者机构列表</strong>：
+            <br><code>paperMeta.org_author-&gt;str</code>
+            <ol>
+                <li>假如作者数量和机构数量一样。则将作者、机构一一对应组装为：
+                <br><code>["&lt;AAAAA&gt;author&lt;BBBBB&gt;org&lt;CCCCC&gt;"].join("\n")</code></li>
+                <li>假如只有一个机构则直接保存为机构名。</li>
+                <li>假如不止一个机构，且作者和机构数量不一样，就利用机构ID建立联系，组装为：
+                <br><code>["&lt;AAAAA&gt;author&lt;BBBBB&gt;org&lt;CCCCC&gt;"].join("\n")</code> 假如使用了ID对应，注意组装的时候去掉作者的最后一个字符，机构中的前两个字符</li>
+            </ol>
+            </li>
+        </ul>
+        
+        <p>将所有内容打印到日志。</p>
+        
+        <h3>油猴脚本功能设计：</h3>
+        <p><strong>界面</strong>：一个"转换"按钮，启动自动化流程；一个"显示日志"按钮，按下后显示日志，打印中间每一步获得的结果。</p>
+        
+        <h4>1、提取目录结构并转换，保存为.mm文件：</h4>
+        <p>提取&lt;ul class="catalog-list"&gt; 下的目录树，然后调用deepseek，令其将这个目录树转换成 xml格式的 .mm文件思维导图。然后生成一个{title}.mm文件保存下来。</p>
+        
+        <div class="prompt-block">
+            <pre><code>// 调用DeepSeek API转换为MindMap格式
+async function convertToMindMap(htmlTree, paperMeta) {
+    const prompt = `
+    请将以下HTML目录树结构转换为FreeMind格式的XML思维导图(.mm文件)。
+    要求：
+    1. 保持原有的层级结构
+    2. 使用标准的FreeMind XML格式
+    3. 根节点使用文章标题: ${paperMeta.title || '未命名文章'}
+    4. 输出只需要XML内容，不需要解释
+    5. 只保留到二级标题（一） (二) (三)，忽略三级标题1. 2. 3. 4.
+    6.去掉"参考文献、注释、基本信息"
+    HTML内容：
+    ${htmlTree}
+    `;
+
+    return new Promise((resolve, reject) => {
+        GM_xmlhttpRequest({
+            method: "POST",
+            url: DEEPSEEK_API_URL,
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${DEEPSEEK_API_KEY}`
+            },
+            data: JSON.stringify({
+                model: "deepseek-chat",
+                messages: [
+                    { role: "system", content: "你是一个专业的格式转换助手，擅长将各种目录结构转换为FreeMind思维导图格式。" },
+                    { role: "user", content: prompt }
+                ],
+                temperature: 0.3,
+                max_tokens: 4000
+            }),
+            onload: function(response) {
+                if (response.status === 200) {
+                    const result = JSON.parse(response.responseText);
+                    const mmContent = result.choices[0].message.content;
+                    
+                    // 清理API返回内容，只保留XML部分
+                    const xmlMatch = mmContent.match(/&lt;map version.*&lt;\/map&gt;/s);
+                    if (xmlMatch) {
+                        resolve(xmlMatch[0]);
+                    } else {
+                        // 如果返回的不是纯XML，尝试提取XML部分
+                        const cleaned = mmContent.replace(/```xml|```/g, '').trim();
+                        resolve(cleaned);
+                    }
+                } else {
+                    const errorMsg = `API错误: ${response.status} - ${response.statusText}`;
+                    LogSystem.addLog('error', errorMsg);
+                    reject(new Error(errorMsg));
+                }
+            },
+            onerror: function(error) {
+                LogSystem.addLog('error', `API请求失败: ${error.message}`);
+                reject(error);
+            }
+        });
+    });
+}</code></pre>
+        </div>
+    </div>
+</body>
+</html>
