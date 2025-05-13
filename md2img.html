@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown 转图片工具</title>
+    <!-- <link rel="stylesheet" href="styles.css"> -->
+    <style>
+body {
+    font-family: sans-serif;
+    margin: 0;
+    background-color: #f4f4f4;
+    color: #333;
+    display: flex;
+    justify-content: center;
+    padding-top: 20px;
+    padding-bottom: 20px;
+}
+
+.container {
+    background-color: #fff;
+    padding: 20px 30px;
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.1);
+    width: 90%;
+    max-width: 1000px;
+}
+
+h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.controls {
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.controls label {
+    font-weight: bold;
+}
+
+#template-select {
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    min-width: 150px;
+}
+
+.editor-preview-container {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.editor-container, .preview-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.editor-container label, .preview-container label, .output-container label {
+    font-weight: bold;
+    margin-bottom: 8px;
+    display: block;
+}
+
+#markdown-input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-family: monospace;
+    min-height: 300px; /* Ensure sufficient height */
+}
+
+#preview-area {
+    border: 1px solid #ddd;
+    padding: 20px; /* Increased padding for better visual separation */
+    border-radius: 4px;
+    background-color: #f9f9f9;
+    min-height: 300px; /* Match textarea height */
+    overflow-y: auto; /* Add scroll for long content */
+    box-sizing: border-box; /* Ensure padding is included in height/width */
+}
+
+.output-container {
+    margin-top: 20px;
+}
+
+#image-output-container {
+    border: 1px dashed #ccc;
+    padding: 10px;
+    margin-bottom: 10px;
+    min-height: 100px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #f9f9f9;
+}
+
+#image-output-container img, #image-output-container canvas {
+    max-width: 100%;
+    max-height: 400px;
+    border: 1px solid #eee;
+}
+
+#download-btn {
+    padding: 10px 15px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+#download-btn:hover {
+    background-color: #0056b3;
+}
+
+/* --- Generic Markdown Element Styling (can be overridden by templates) --- */
+#preview-area h1, #preview-area h2, #preview-area h3, #preview-area h4, #preview-area h5, #preview-area h6 {
+    margin-top: 1.2em;
+    margin-bottom: 0.6em;
+    font-weight: bold;
+}
+#preview-area p { margin-bottom: 0.8em; }
+#preview-area ul, #preview-area ol { margin-left: 20px; margin-bottom: 0.8em; }
+#preview-area li { margin-bottom: 0.2em; }
+#preview-area blockquote { 
+    margin-left: 0;
+    padding-left: 15px; 
+    border-left: 3px solid #ccc; 
+    color: #555; 
+    font-style: italic;
+    margin-bottom: 0.8em;
+}
+#preview-area code { 
+    font-family: monospace;
+    background-color: #f0f0f0; 
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+#preview-area pre {
+    background-color: #f0f0f0;
+    padding: 10px;
+    border-radius: 3px;
+    overflow-x: auto;
+    margin-bottom: 0.8em;
+}
+#preview-area pre code {
+    background-color: transparent;
+    padding: 0;
+    font-size: 0.9em;
+}
+#preview-area table {
+    border-collapse: collapse;
+    width: auto; /* Or 100% if you want full width tables */
+    margin-bottom: 1em;
+}
+#preview-area th, #preview-area td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+#preview-area th {
+    background-color: #f2f2f2;
+}
+#preview-area img {
+    max-width: 100%;
+    height: auto;
+    display: block; /* To remove extra space below image */
+    margin-bottom: 0.8em;
+}
+
+/* --- Default Template Styles --- */
+.preview-default {
+    font-family: Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    color: #333;
+    background-color: #ffffff; /* Explicit background */
+}
+.preview-default h1, .preview-default h2, .preview-default h3 {
+    color: #111;
+}
+
+/* --- Academic Template Styles --- */
+/* Using a common serif font, assuming Noto Serif might not be available by default on all systems for direct CSS use without @font-face */
+/* For a true Noto Serif, we'd need to host the font or use a CDN and @font-face rule */
+.preview-academic {
+    font-family: "Times New Roman", Times, serif; /* Common academic font */
+    font-size: 12pt; /* Standard academic font size */
+    line-height: 1.5; /* Double spacing is common, 1.5 is also used */
+    color: #000000; /* Black text */
+    background-color: #ffffff; /* White background */
+    padding: 25px; /* More padding for a document feel */
+}
+.preview-academic h1 {
+    font-size: 16pt;
+    text-align: center;
+    margin-bottom: 24pt; /* More space after main title */
+}
+.preview-academic h2 {
+    font-size: 14pt;
+    margin-top: 18pt;
+    margin-bottom: 6pt;
+}
+.preview-academic h3 {
+    font-size: 12pt;
+    font-style: italic;
+    margin-top: 12pt;
+    margin-bottom: 4pt;
+}
+.preview-academic p {
+    text-align: justify; /* Justified text is common in papers */
+    margin-bottom: 12pt;
+}
+.preview-academic blockquote {
+    margin-left: 20px;
+    margin-right: 20px;
+    font-style: normal;
+    border-left: 2px solid #555;
+    padding-left: 10px;
+}
+.preview-academic code {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 10pt;
+}
+.preview-academic pre {
+    font-size: 10pt;
+    padding: 8px;
+    background-color: #f5f5f5;
+    border: 1px solid #e0e0e0;
+}
+
+/* --- Modern Clean Template Styles --- */
+.preview-modern {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+    color: #2c3e50; /* Dark blue-gray text */
+    background-color: #ffffff;
+    padding: 20px;
+}
+.preview-modern h1, .preview-modern h2, .preview-modern h3 {
+    color: #1abc9c; /* Teal color for headings */
+    border-bottom: 2px solid #1abc9c;
+    padding-bottom: 5px;
+    margin-bottom: 15px;
+}
+.preview-modern h1 { font-size: 2em; }
+.preview-modern h2 { font-size: 1.6em; }
+.preview-modern h3 { font-size: 1.3em; }
+.preview-modern a {
+    color: #1abc9c;
+    text-decoration: none;
+}
+.preview-modern a:hover {
+    text-decoration: underline;
+}
+.preview-modern code {
+    background-color: #ecf0f1; /* Light gray background for code */
+    color: #c0392b; /* Reddish color for code text */
+    border-radius: 4px;
+    padding: 3px 6px;
+}
+.preview-modern pre {
+    background-color: #34495e; /* Dark blue background for pre */
+    color: #ecf0f1; /* Light text on dark background */
+    padding: 15px;
+    border-radius: 5px;
+    border: none;
+}
+.preview-modern pre code {
+    background-color: transparent;
+    color: inherit;
+}
+
+/* --- Creative Dark Template Styles --- */
+.preview-creative-dark {
+    font-family: "Verdana", Geneva, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    color: #e0e0e0; /* Light gray text */
+    background-color: #2c2c2c; /* Dark background */
+    padding: 25px;
+    border-radius: 5px; /* Slightly rounded corners for the preview area itself */
+}
+.preview-creative-dark h1, .preview-creative-dark h2, .preview-creative-dark h3 {
+    color: #58a6ff; /* Bright blue for headings */
+    border-bottom: 1px dashed #555;
+    padding-bottom: 8px;
+}
+.preview-creative-dark h1 { font-size: 2.2em; text-shadow: 1px 1px 2px #000; }
+.preview-creative-dark h2 { font-size: 1.8em; }
+.preview-creative-dark h3 { font-size: 1.4em; }
+.preview-creative-dark a {
+    color: #79c0ff; /* Lighter blue for links */
+}
+.preview-creative-dark blockquote {
+    border-left: 3px solid #58a6ff;
+    color: #b0b0b0; /* Lighter than main text for quotes */
+    background-color: #383838; /* Slightly lighter dark for quote background */
+    padding: 10px 15px;
+}
+.preview-creative-dark code {
+    background-color: #444; /* Darker gray for inline code */
+    color: #f0a0a0; /* Light red for code text */
+    border-radius: 3px;
+    padding: 2px 5px;
+}
+.preview-creative-dark pre {
+    background-color: #1e1e1e; /* Very dark for code blocks */
+    color: #d4d4d4; /* Off-white for code block text */
+    padding: 15px;
+    border-radius: 4px;
+    border: 1px solid #555;
+}
+.preview-creative-dark pre code {
+    background-color: transparent;
+    color: inherit;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .editor-preview-container {
+        flex-direction: column;
+    }
+    .container {
+        width: 95%;
+        padding: 15px;
+    }
+    #preview-area {
+        min-height: 250px; /* Adjust for smaller screens */
+    }
+    #markdown-input {
+        min-height: 250px; /* Adjust for smaller screens */
+    }
+}
+
+
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Markdown 转精美图片</h1>
+
+        <div class="controls">
+            <label for="template-select">选择模板:</label>
+            <select id="template-select">
+                <option value="default">默认模板</option>
+                <option value="academic">论文模板</option>
+                <option value="modern">现代简洁</option>
+                <option value="creative-dark">创意深色</option>
+            </select>
+        </div>
+
+        <div class="editor-preview-container">
+            <div class="editor-container">
+                <label for="markdown-input">输入Markdown文本:</label>
+                <textarea id="markdown-input" rows="15" placeholder="在此输入Markdown..."></textarea>
+            </div>
+
+            <div class="preview-container">
+                <label>预览:</label>
+                <div id="preview-area" class="preview-default">
+                    <!-- 渲染后的HTML将显示在这里 -->
+                </div>
+            </div>
+        </div>
+
+        <div class="output-container">
+            <label>生成的图片:</label>
+            <div id="image-output-container">
+                <!-- 生成的图片将显示在这里 (e.g., as an img tag or canvas) -->
+                <p>图片将在此处生成</p>
+            </div>
+            <button id="download-btn">下载图片</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas/dist/html2canvas.min.js"></script>
+    <script>document.addEventListener("DOMContentLoaded", () => {
+            const markdownInput = document.getElementById("markdown-input");
+            const templateSelect = document.getElementById("template-select");
+            const previewArea = document.getElementById("preview-area");
+            const imageOutputContainer = document.getElementById("image-output-container");
+            const downloadBtn = document.getElementById("download-btn");
+
+            let generatedCanvas = null; // To store the generated canvas for download
+
+            // Function to render HTML to Image
+            async function renderImage() {
+                imageOutputContainer.innerHTML = "<p>正在生成图片...</p>";
+                try {
+                    // Ensure styles are applied before rendering
+                    await new Promise(resolve => setTimeout(resolve, 100));
+
+                    const canvas = await html2canvas(previewArea, {
+                        useCORS: true, // For external images if any
+                        scale: 2, // Increase scale for better quality
+                        logging: false, // Disable logging for cleaner console
+                        onclone: (documentClone) => {
+                            const clonedPreviewArea = documentClone.getElementById("preview-area");
+                            if (clonedPreviewArea) {
+                                clonedPreviewArea.className = previewArea.className;
+                                clonedPreviewArea.style.display = "block";
+                                // Ensure the cloned element has a defined size, otherwise html2canvas might produce an empty image
+                                // This is particularly important if the original element's size is determined by its content or flex/grid layouts
+                                clonedPreviewArea.style.width = previewArea.offsetWidth + "px";
+                                clonedPreviewArea.style.height = previewArea.offsetHeight + "px";
+                            }
+                        }
+                    });
+                    imageOutputContainer.innerHTML = ""; // Clear loading message
+                    canvas.style.maxWidth = "100%";
+                    canvas.style.maxHeight = "400px";
+                    canvas.style.border = "1px solid #eee";
+                    imageOutputContainer.appendChild(canvas);
+                    generatedCanvas = canvas; // Store for download
+                } catch (error) {
+                    console.error("Error rendering image:", error);
+                    imageOutputContainer.innerHTML = "<p>图片生成失败，请查看控制台日志。</p>";
+                    generatedCanvas = null;
+                }
+            }
+
+            // Function to update preview and trigger image rendering
+            async function updatePreviewAndRenderImage() {
+                const markdownText = markdownInput.value;
+                const selectedTemplate = templateSelect.value;
+
+                previewArea.innerHTML = marked.parse(markdownText);
+                previewArea.className = ""; // Reset classes
+                previewArea.classList.add(`preview-${selectedTemplate}`);
+
+                await renderImage();
+            }
+
+            // Event listeners
+            markdownInput.addEventListener("input", updatePreviewAndRenderImage);
+            templateSelect.addEventListener("change", updatePreviewAndRenderImage);
+
+            // Initial preview update and image render
+            updatePreviewAndRenderImage();
+
+            // Download functionality
+            downloadBtn.addEventListener("click", () => {
+                if (generatedCanvas) {
+                    const imageURL = generatedCanvas.toDataURL("image/png");
+                    const link = document.createElement("a");
+                    link.href = imageURL;
+                    link.download = "markdown-image.png";
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                } else {
+                    alert("请先等待图片生成完毕或图片生成失败。");
+                    console.log("Download button clicked, but no canvas generated or an error occurred.");
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
