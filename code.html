@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中国日报新闻爬取系统 (纯客户端版 - CORS Proxied)</title>
+    <style>
+        /* ... (all your CSS from the original HTML - unchanged) ... */
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; }
+        h1 { color: #1a5276; text-align: center; }
+        .container { background-color: #f8f9fa; border-radius: 5px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="date"] { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        button { background-color: #2e86c1; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:hover { background-color: #1a5276; }
+        .file-list { margin-top: 30px; }
+        .file-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; }
+        .file-info { flex-grow: 1; }
+        .file-name { display: block; font-weight: bold; }
+        .file-date { display: block; font-size: 0.8em; color: #666; margin-top: 3px; }
+        .file-item:hover { background-color: #f1f1f1; }
+        .download-btn { background-color: #27ae60; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 14px; text-decoration: none; display: inline-block; margin-left: 10px; }
+        .download-btn:hover { background-color: #1e8449; }
+        .status { margin-top: 20px; padding: 10px; border-radius: 4px; display: none; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .loading { display: none; text-align: center; margin-top: 20px; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 2s linear infinite; margin: 0 auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #auth-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); z-index: 1000; display: flex; justify-content: center; align-items: center; flex-direction: column; }
+        #auth-box { background-color: white; padding: 20px; border-radius: 5px; text-align: center;}
+        .cors-notice { font-size: 0.9em; color: #555; margin-bottom: 15px; background-color: #fff3cd; border: 1px solid #ffeeba; padding: 10px; border-radius: 4px; }
+    </style>
+    <!-- Pyodide script -->
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js"></script>
+</head>
+<body>
+    <div id="auth-overlay">
+        <div id="auth-box">
+            <p>请输入访问密钥：</p>
+            <input type="password" id="auth-key-input" style="padding: 8px; margin-bottom: 10px;">
+            <button id="auth-submit-btn" style="padding: 8px 15px;">提交</button>
+            <p id="auth-status" style="color: red; margin-top: 10px;"></p>
+        </div>
+    </div>
+
+    <div class="container" style="display:none;">
+        <h1>中国日报新闻爬取系统 (纯客户端版)</h1>
+        <div class="cors-notice">
+            <b>注意:</b> 为绕过浏览器跨域限制，本系统使用公共CORS代理服务 (api.allorigins.win) 访问中国日报网站。这可能会导致请求稍慢或受代理服务可用性影响。
+            <br>为了获得最佳体验或进行开发，建议将此HTML文件通过本地Web服务器 (如 Python的 `http.server` 模块) 运行。
+        </div>
+        
+        <div class="form-group">
+            <label for="date">选择日期：</label>
+            <input type="date" id="date" name="date">
+        </div>
+        
+        <button id="generate-btn">生成文档</button>
+        
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>正在准备环境并生成文档，首次运行可能较慢，请稍候...</p>
+        </div>
+        
+        <div id="status" class="status"></div>
+        
+        <div class="file-list">
+            <h2>可下载文件 (本次会话)</h2>
+            <div id="file-container">
+                <p>暂无可下载文件</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/python" id="python-scraper">
+# Python scraper code (formerly craw.py) will be embedded here
+import requests
+from bs4 import BeautifulSoup
+import re # Ensure re is imported at the top level of the script
+from datetime import datetime, timedelta
+from io import BytesIO # For in-memory file handling
+
+# Import python-docx components
+from docx import Document
+from docx.shared import Pt, RGBColor
+from docx.enum.style import WD_STYLE_TYPE
+from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+
+# This function will be called by JavaScript via Pyodide
+def run_scraper(target_date_str):
+    CORS_PROXY = "https://api.allorigins.win/raw?url="
+
+    try:
+        doc = Document()
+        doc.styles['Normal'].font.name = 'Times New Roman'
+        body_style = doc.styles['Normal']
+        body_style.font.name = 'Times New Roman'
+        body_style.font.size = Pt(14)
+
+        base_urls = ["https://www.chinadaily.com.cn/business/economy",
+                     "https://www.chinadaily.com.cn/business/biz_industries",
+                     "https://www.chinadaily.com.cn/business/money"]
+        cates = ["Macro", "Industry", "Finance"]
+        
+        target_date = datetime.strptime(target_date_str, '%Y-%m-%d')
+        all_processed_links = set() 
+
+        for base_url, cate in zip(base_urls, cates):
+            proxied_url = CORS_PROXY + base_url
+            print(f"Processing category: {cate} from proxied URL: {proxied_url}")
+            
+            try:
+                response = requests.get(proxied_url, timeout=45) 
+                response.raise_for_status() 
+                soup = BeautifulSoup(response.text, 'html.parser')
+            except Exception as e_cat:
+                print(f"Error fetching category page {base_url}: {str(e_cat)}")
+                # Add category heading to DOCX even if category page fails
+                heading_run = doc.add_heading("", level=1).add_run(cate)
+                heading_run.font.name = 'Times New Roman'
+                heading_run.font.size = Pt(42)
+                doc.add_paragraph(f"(无法加载 {cate} 类别新闻列表: {str(e_cat)})", style='Normal')
+                continue # Skip to next category
+
+
+            elements = soup.find_all('span', class_='tw3_01_2_t')
+            tmp_list = []
+
+            for element in elements:
+                date_text_tag = element.find('b')
+                if not date_text_tag: continue
+                date_text = date_text_tag.text.strip()
+                
+                try:
+                    if len(date_text) > 10: 
+                        article_date = datetime.strptime(date_text, '%Y-%m-%d %H:%M')
+                    else: 
+                        article_date = datetime.strptime(date_text, '%Y-%m-%d')
+                except ValueError:
+                    print(f"Could not parse date: {date_text} for an article in {cate}")
+                    continue
+
+                if article_date.date() == target_date.date():
+                    anchor = element.find('a')
+                    if anchor and anchor.get('href'):
+                        href = anchor.get('href')
+                        if not href.startswith('http'):
+                            href = "https:" + href
+                        if href not in all_processed_links:
+                            tmp_list.append(href)
+                            all_processed_links.add(href)
+            
+            if not tmp_list:
+                print(f"No articles found for {target_date_str} in category {cate}")
+                heading_run = doc.add_heading("", level=1).add_run(cate)
+                heading_run.font.name = 'Times New Roman'
+                heading_run.font.size = Pt(42)
+                doc.add_paragraph(f"(无 {target_date_str} 相关新闻)", style='Normal')
+                continue
+
+            news_titles_for_category = []
+            news_authors_for_category = []
+            news_contents_for_category = []
+
+            print(f"Found {len(tmp_list)} articles for category {cate} on {target_date_str}")
+            for original_article_link in tmp_list:
+                proxied_article_link = CORS_PROXY + original_article_link
+                print(f"Analyzing article (via proxy): {proxied_article_link}")
+                
+                # Initialize for each article attempt
+                title = "无标题"
+                author = "未知作者" # Default author
+                content_text = "无内容"
+
+                try:
+                    article_response = requests.get(proxied_article_link, timeout=30)
+                    article_response.raise_for_status()
+                    article_soup = BeautifulSoup(article_response.text, 'html.parser')
+                    
+                    title_element = article_soup.find('h1')
+                    title = title_element.text.strip() if title_element else "无标题"
+                    
+                    current_author_raw = "未知作者" # Temporary variable for raw author string
+                    info_div = article_soup.find('div', class_='info')
+                    if info_div:
+                        author_span = info_div.find('span', class_='info_l')
+                        if author_span:
+                            current_author_raw = author_span.text.strip().replace("\n", "")
+                    else: 
+                        data_p = article_soup.find('p', class_='data')
+                        if data_p:
+                            current_raw_author = data_p.text.strip().replace("\n", "")
+                    
+                    # Clean the author string HERE, within the try block after fetching it
+                    author = re.sub(r'\s+', ' ', current_author_raw).strip()
+
+                    content_div = article_soup.find('div', id='Content')
+                    content_text = content_div.text.strip().replace('\r', '\n') if content_div else "无内容"
+
+                except Exception as e_article:
+                    print(f"Error processing article {original_article_link} (via proxy {proxied_article_link}): {str(e_article)}")
+                    title = f"文章处理失败: {original_article_link.split('/')[-1]}"
+                    author = "N/A" # Author set to N/A on error
+                    content_text = f"无法加载或解析此文章内容。错误: {str(e_article)}"
+                
+                news_titles_for_category.append(title)
+                news_authors_for_category.append(author) # author is now cleaned or "N/A"
+                news_contents_for_category.append(content_text)
+
+            # Add category heading to DOCX
+            cat_heading_run = doc.add_heading("", level=1).add_run(cate)
+            cat_heading_run.font.name = 'Times New Roman'
+            cat_heading_run.font.size = Pt(42)
+            cat_heading_run.font.color.rgb = RGBColor(0, 0, 0)
+
+            for art_title, art_author, art_content in zip(news_titles_for_category, news_authors_for_category, news_contents_for_category):
+                title_run = doc.add_heading("", level=2).add_run(art_title)
+                title_run.font.name = 'Times New Roman'
+                title_run.font.size = Pt(29)
+                title_run.font.color.rgb = RGBColor(0, 0, 0)
+
+                doc.add_paragraph(f"作者: {art_author}", style='Normal')
+                for para in art_content.split('\n'):
+                    if para.strip(): 
+                        doc.add_paragraph(para.strip(), style='Normal')
+        
+        file_stream = BytesIO()
+        doc.save(file_stream)
+        file_stream.seek(0)
+        
+        filename = f"chinadaily{target_date.strftime('%Y%m%d')}.docx"
+        
+        return {"status": "success", "filename": filename, "content": file_stream.getvalue()}
+
+    except requests.exceptions.RequestException as req_ex:
+        import traceback
+        tb_str = traceback.format_exc()
+        error_message = f"网络请求错误: {str(req_ex)}. \n可能是CORS代理问题或目标网站无响应.\n详细信息: {tb_str}"
+        print(error_message)
+        return {"status": "error", "message": error_message}
+    except Exception as e_global: # Catch any other unexpected error in run_scraper
+        import traceback
+        tb_str = traceback.format_exc() # Get full traceback
+        error_message = f"脚本内部发生意外错误: {str(e_global)}\nTraceback:\n{tb_str}"
+        print(error_message)
+        return {"status": "error", "message": error_message}
+    </script>
+
+    <script>
+        const PYTHON_SCRAPER_CODE = document.getElementById('python-scraper').textContent;
+        const APP_KEY = "CZKXYJY"; 
+        let pyodide = null;
+        let isPyodideReady = false;
+        let generatedFiles = []; 
+
+        const loadingDiv = document.getElementById('loading');
+        const statusDiv = document.getElementById('status');
+        const generateBtn = document.getElementById('generate-btn');
+        const dateInput = document.getElementById('date');
+        const fileContainer = document.getElementById('file-container');
+        
+        const authOverlay = document.getElementById('auth-overlay');
+        const authKeyInput = document.getElementById('auth-key-input');
+        const authSubmitBtn = document.getElementById('auth-submit-btn');
+        const authStatus = document.getElementById('auth-status');
+        const mainContainer = document.querySelector('.container');
+
+        authSubmitBtn.addEventListener('click', () => {
+            if (authKeyInput.value === APP_KEY) {
+                authOverlay.style.display = 'none';
+                mainContainer.style.display = 'block';
+                initializeApp();
+            } else {
+                authStatus.textContent = '密钥错误！';
+            }
+        });
+        authKeyInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                authSubmitBtn.click();
+            }
+        });
+
+        async function initializePyodide() {
+            if (pyodide) return pyodide;
+            statusDiv.style.display = 'none';
+            loadingDiv.style.display = 'block';
+            loadingDiv.querySelector('p').textContent = '正在加载 Python 环境 (Pyodide)，请稍候...';
+
+            try {
+                pyodide = await loadPyodide();
+                loadingDiv.querySelector('p').textContent = '正在安装所需 Python 包 (requests, beautifulsoup4, python-docx, lxml)...';
+                await pyodide.loadPackage("micropip");
+                const micropip = pyodide.pyimport("micropip");
+                await micropip.install(['requests', 'beautifulsoup4', 'python-docx', 'lxml']);
+                
+                pyodide.runPython(PYTHON_SCRAPER_CODE);
+                isPyodideReady = true;
+                loadingDiv.style.display = 'none';
+                statusDiv.className = 'status success';
+                statusDiv.textContent = 'Python 环境准备就绪！';
+                statusDiv.style.display = 'block';
+                setTimeout(() => statusDiv.style.display = 'none', 3000);
+                return pyodide;
+            } catch (error) {
+                console.error('Pyodide initialization failed:', error);
+                loadingDiv.style.display = 'none';
+                statusDiv.className = 'status error';
+                statusDiv.textContent = 'Python 环境加载失败: ' + error.message;
+                statusDiv.style.display = 'block';
+                isPyodideReady = false;
+                throw error; 
+            }
+        }
+
+        function initializeApp() {
+            if (!dateInput.value) {
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                dateInput.value = yesterday.toISOString().split('T')[0];
+            }
+            refreshFileListDisplay(); 
+            initializePyodide().catch(err => console.error("Failed to pre-load Pyodide after auth"));
+        }
+
+        generateBtn.addEventListener('click', async function() {
+            if (!isPyodideReady) {
+                try {
+                    await initializePyodide();
+                } catch (error) {
+                    return; 
+                }
+            }
+            
+            loadingDiv.style.display = 'block';
+            loadingDiv.querySelector('p').textContent = '正在通过CORS代理抓取数据并生成文档，请稍候...';
+            statusDiv.style.display = 'none';
+            
+            const dateValue = dateInput.value;
+            if (!dateValue) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = '错误：请选择一个日期。';
+                statusDiv.style.display = 'block';
+                loadingDiv.style.display = 'none';
+                return;
+            }
+
+            try {
+                const pythonScraperFunc = pyodide.globals.get('run_scraper');
+                const resultProxy = await pythonScraperFunc(dateValue); // `await` if run_scraper becomes async
+                const result = resultProxy.toJs({dict_converter: Object.fromEntries}); 
+                resultProxy.destroy(); 
+
+                loadingDiv.style.display = 'none';
+                statusDiv.style.display = 'block';
+
+                if (result && result.status === 'success') {
+                    statusDiv.className = 'status success';
+                    statusDiv.textContent = `文档 ${result.filename} 生成成功！将自动开始下载。`;
+                    
+                    const blob = new Blob([result.content], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+                    
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = result.filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(link.href); 
+
+                    const now = new Date();
+                    generatedFiles.unshift({ 
+                        name: result.filename,
+                        mod_time: now.toLocaleString(),
+                        blob: blob 
+                    });
+                    refreshFileListDisplay();
+
+                } else {
+                    statusDiv.className = 'status error';
+                    statusDiv.textContent = '错误：' + (result.message || '未知Python错误。请查看浏览器控制台获取详情。');
+                    console.error("Python script error details:", result.message);
+                }
+            } catch (error) {
+                loadingDiv.style.display = 'none';
+                statusDiv.style.display = 'block';
+                statusDiv.className = 'status error';
+                statusDiv.textContent = 'JavaScript 发生错误：' + error.message + '. 请查看浏览器控制台。';
+                console.error('JS Error during generation:', error);
+            }
+        });
+        
+        function refreshFileListDisplay() {
+            fileContainer.innerHTML = ''; 
+            
+            if (generatedFiles.length > 0) {
+                generatedFiles.forEach((file, index) => {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'file-item';
+                    
+                    const fileInfo = document.createElement('div');
+                    fileInfo.className = 'file-info';
+                    
+                    const fileNameSpan = document.createElement('span');
+                    fileNameSpan.className = 'file-name';
+                    fileNameSpan.textContent = file.name;
+                    
+                    const fileDateSpan = document.createElement('span');
+                    fileDateSpan.className = 'file-date';
+                    fileDateSpan.textContent = '生成于: ' + file.mod_time;
+                    
+                    fileInfo.appendChild(fileNameSpan);
+                    fileInfo.appendChild(fileDateSpan);
+                    
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.className = 'download-btn';
+                    downloadBtn.textContent = '重新下载';
+                    downloadBtn.addEventListener('click', () => {
+                        const link = document.createElement('a');
+                        link.href = URL.createObjectURL(file.blob); 
+                        link.download = file.name;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(link.href); 
+                    });
+                    
+                    fileItem.appendChild(fileInfo);
+                    fileItem.appendChild(downloadBtn);
+                    fileContainer.appendChild(fileItem);
+                });
+            } else {
+                fileContainer.innerHTML = '<p>暂无可下载文件</p>';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const keyFromUrl = urlParams.get('key');
+            if (keyFromUrl === APP_KEY) {
+                authOverlay.style.display = 'none';
+                mainContainer.style.display = 'block';
+                initializeApp();
+            } else {
+                authOverlay.style.display = 'flex'; 
+                mainContainer.style.display = 'none';
+            }
+        });
+
+    </script>
+</body>
+</html>
